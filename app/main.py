@@ -5,6 +5,8 @@ import os
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import asyncio
+from datetime import datetime
+import time
 
 app = FastAPI(
     title="API LLM - OpenAI Compatible API",
@@ -15,6 +17,20 @@ app = FastAPI(
 # Configuration
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "mistral")
+
+def parse_ollama_timestamp(timestamp_str):
+    """Parse Ollama timestamp to Unix timestamp"""
+    try:
+        if isinstance(timestamp_str, str):
+            # Parse ISO 8601 format
+            dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            return int(dt.timestamp())
+        elif isinstance(timestamp_str, (int, float)):
+            return int(timestamp_str)
+        else:
+            return int(time.time())
+    except Exception:
+        return int(time.time())
 
 # Pydantic models for OpenAI compatibility
 class ChatMessage(BaseModel):
@@ -117,7 +133,7 @@ async def chat_completions(request: ChatCompletionRequest):
                 openai_response = {
                     "id": f"chatcmpl-{hash(str(ollama_response))}"[:29],
                     "object": "chat.completion",
-                    "created": int(ollama_response.get("created_at", 0)),
+                    "created": parse_ollama_timestamp(ollama_response.get("created_at", 0)),
                     "model": request.model,
                     "choices": [{
                         "index": 0,
