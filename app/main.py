@@ -1,5 +1,4 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import json
 import os
@@ -13,18 +12,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Configuration
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "llama2")
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "mistral")
 
 # Pydantic models for OpenAI compatibility
 class ChatMessage(BaseModel):

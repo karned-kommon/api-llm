@@ -35,9 +35,9 @@ if [ $attempt -eq $max_attempts ]; then
 fi
 
 # Download default model
-echo "📥 Downloading default model (llama2)..."
+echo "📥 Downloading default model (mistral)..."
 echo "   This may take several minutes depending on your internet connection..."
-docker exec ollama ollama pull llama2
+docker exec ollama ollama pull mistral
 
 # Test the API
 echo "🧪 Testing the API..."
@@ -65,4 +65,4 @@ echo ""
 echo "💡 Test with:"
 echo '   curl -X POST http://localhost:8000/v1/chat/completions \'
 echo '     -H "Content-Type: application/json" \'
-echo '     -d '"'"'{"model": "llama2", "messages": [{"role": "user", "content": "Hello!"}]}'"'"
+echo '     -d '"'"'{"model": "mistral", "messages": [{"role": "user", "content": "Hello!"}]}'"'"

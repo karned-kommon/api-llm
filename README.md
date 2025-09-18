@@ -32,10 +32,10 @@ Once Ollama is running, download a model (this may take several minutes):
 
 ```bash
 # Download a small model (recommended for testing)
-docker exec ollama ollama pull llama2
+docker exec ollama ollama pull mistral
 
 # Or download other available models
-docker exec ollama ollama pull mistral
+docker exec ollama ollama pull llama2
 docker exec ollama ollama pull codellama
 ```
 
@@ -52,7 +52,7 @@ curl http://localhost:8000/v1/models
 curl -X POST http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "llama2",
+    "model": "mistral",
     "messages": [
       {"role": "user", "content": "Hello, how are you?"}
     ]
@@ -85,7 +85,7 @@ print(response.json())
 
 # Chat completion
 response = httpx.post("http://localhost:8000/v1/chat/completions", json={
-    "model": "llama2",
+    "model": "mistral",
     "messages": [
         {"role": "user", "content": "Explain quantum computing in simple terms"}
     ],
@@ -106,7 +106,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="llama2",
+    model="mistral",
     messages=[
         {"role": "user", "content": "Hello!"}
     ]
@@ -124,7 +124,7 @@ const response = await fetch('http://localhost:8000/v1/chat/completions', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'llama2',
+    model: 'mistral',
     messages: [
       { role: 'user', content: 'What is machine learning?' }
     ]
@@ -140,7 +140,7 @@ console.log(data.choices[0].message.content);
 ### Environment Variables
 
 - `OLLAMA_BASE_URL`: Ollama service URL (default: `http://localhost:11434`)
-- `DEFAULT_MODEL`: Default model to use (default: `llama2`)
+- `DEFAULT_MODEL`: Default model to use (default: `mistral`)
 
 ### Docker Compose Configuration
 
@@ -181,8 +181,8 @@ docker build -t api-llm .
 
 Popular models you can use with Ollama:
 
+- `mistral` - Mistral 7B (default)
 - `llama2` - Meta's Llama 2 (7B parameters)
-- `mistral` - Mistral 7B
 - `codellama` - Code Llama for code generation
 - `neural-chat` - Intel's neural chat model
 - `starling-lm` - Starling language model

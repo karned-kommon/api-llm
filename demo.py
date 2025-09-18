@@ -13,7 +13,7 @@ async def demo_chat_completion():
     
     # Sample request that would work with a real Ollama instance
     request_data = {
-        "model": "llama2",
+        "model": "mistral",
         "messages": [
             {"role": "user", "content": "Hello! How are you today?"}
         ],
@@ -28,7 +28,7 @@ async def demo_chat_completion():
     
     print("💡 To test with real Ollama, run:")
     print("   docker-compose up -d")
-    print("   docker exec ollama ollama pull llama2")
+    print("   docker exec ollama ollama pull mistral")
     print("   curl -X POST http://localhost:8000/v1/chat/completions \\")
     print("     -H 'Content-Type: application/json' \\")
     print(f"     -d '{json.dumps(request_data)}'")
