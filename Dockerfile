@@ -1,70 +1,96 @@
-# Multi-stage build to download Mistral model and create optimized image
+# Dockerfile autonome pour API LLM avec Ollama et Mistral
+FROM ollama/ollama:latest
 
-# Stage 1: Download Mistral model
-FROM ollama/ollama:latest as model-downloader
+# Installer Python et les dépendances système
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    curl \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create directory for models
-RUN mkdir -p /tmp/ollama
+# Créer un environnement virtuel Python
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Start Ollama in background and download Mistral model
+# Configurer le répertoire de travail
+WORKDIR /app
+
+# Copier et installer les dépendances Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copier le code de l'application
+COPY app/ ./app/
+
+# Télécharger le modèle Mistral pendant la construction de l'image
 RUN ollama serve & \
     sleep 10 && \
     ollama pull mistral && \
     sleep 5 && \
     pkill ollama
 
-# Stage 2: Build API application
-FROM python:3.11-slim as api-builder
+# Créer un script de démarrage simplifié qui lance seulement Ollama et l'API
+RUN cat > /app/init.sh << 'EOF'
+#!/bin/bash
+set -e
 
-WORKDIR /app
+echo "=== Démarrage du container ==="
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# Démarrer Ollama en arrière-plan
+echo "Démarrage d'Ollama..."
+ollama serve &
+OLLAMA_PID=$!
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
+# Fonction pour nettoyer les processus
+cleanup() {
+    echo "Arrêt des services..."
+    kill $OLLAMA_PID 2>/dev/null || true
+    exit
+}
+trap cleanup SIGTERM SIGINT
 
-# Copy application code
-COPY app/ ./app/
+# Attendre qu'Ollama soit prêt
+echo "Attente du démarrage d'Ollama..."
+for i in {1..30}; do
+    if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
+        echo "Ollama est prêt !"
+        break
+    fi
+    echo "Tentative $i/30 - Ollama démarre..."
+    sleep 2
+done
 
-# Stage 3: Final runtime image
-FROM python:3.11-slim
+# Vérifier si Ollama répond
+if ! curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
+    echo "Erreur: Ollama ne répond pas après 60 secondes"
+    exit 1
+fi
 
-WORKDIR /app
+# Vérifier que le modèle Mistral est bien présent
+echo "Vérification de la présence du modèle Mistral..."
+ollama list
 
-# Install minimal runtime dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --shell /bin/bash app
+# Démarrer l'API FastAPI
+echo "Démarrage de l'API FastAPI..."
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+EOF
 
-# Copy Python dependencies from builder
-COPY --from=api-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=api-builder /usr/local/bin /usr/local/bin
+# Rendre le script exécutable
+RUN chmod +x /app/init.sh
 
-# Copy application
-COPY --from=api-builder /app /app
+# Exposer les ports
+EXPOSE 8000 11434
 
-# Copy Ollama models from first stage
-COPY --from=model-downloader /root/.ollama /app/.ollama
-
-# Set ownership
-RUN chown -R app:app /app
-
-# Switch to non-root user
-USER app
-
-# Expose port
-EXPOSE 8000
+# Variables d'environnement
+ENV OLLAMA_BASE_URL=http://localhost:11434
+ENV DEFAULT_MODEL=mistral
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8000/health && curl -f http://localhost:11434/api/tags || exit 1
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Remplacer l'entrypoint et utiliser notre script
+ENTRYPOINT []
+CMD ["/bin/bash", "/app/init.sh"]

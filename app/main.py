@@ -90,17 +90,17 @@ async def chat_completions(request: ChatCompletionRequest):
                 "role": msg.role,
                 "content": msg.content
             })
-        
+
         ollama_request = {
             "model": request.model,
             "messages": ollama_messages,
             "stream": False,
             "options": {}
         }
-        
+
         if request.temperature is not None:
             ollama_request["options"]["temperature"] = request.temperature
-        
+
         if request.max_tokens is not None:
             ollama_request["options"]["num_predict"] = request.max_tokens
 
@@ -112,7 +112,7 @@ async def chat_completions(request: ChatCompletionRequest):
             
             if response.status_code == 200:
                 ollama_response = response.json()
-                
+
                 # Convert Ollama response to OpenAI format
                 openai_response = {
                     "id": f"chatcmpl-{hash(str(ollama_response))}"[:29],
@@ -133,12 +133,12 @@ async def chat_completions(request: ChatCompletionRequest):
                         "total_tokens": ollama_response.get("prompt_eval_count", 0) + ollama_response.get("eval_count", 0)
                     }
                 }
-                
+
                 return openai_response
             else:
                 error_detail = response.text if response.text else "Ollama service error"
                 raise HTTPException(status_code=response.status_code, detail=error_detail)
-                
+
     except httpx.RequestError as e:
         raise HTTPException(status_code=503, detail=f"Cannot connect to Ollama: {str(e)}")
     except Exception as e:
